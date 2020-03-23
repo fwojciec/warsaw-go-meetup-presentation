@@ -1,0 +1,18 @@
+// scs/scs.go
+
+type SessionService struct {
+	sm *scs.SessionManager
+}
+
+func (s *SessionService) Login(ctx context.Context, user *gqlmeetup.User) error {
+	if err := s.sm.RenewToken(ctx); err != nil {
+		return err
+	}
+	// marshal to JSON, without pwd hash
+	b, err := s.marshalUser(user)
+	if err != nil {
+		return err
+	}
+	s.sm.Put(ctx, "user", b)
+	return nil
+}

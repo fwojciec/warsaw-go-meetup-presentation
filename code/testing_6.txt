@@ -1,0 +1,15 @@
+// glqgen/resolvers_test.go
+
+func TestQueryResolverBooks(t *testing.T) {
+	t.Parallel()
+	repoMock := &mocks.RepositoryMock{
+		BookListFunc: func(ctx context.Context, limit, offset *int) ([]*gqlmeetup.Book, error) {
+			return nil, nil
+		},
+	}
+	r := &gqlgen.Resolver{Repository: repoMock}
+	_, err := r.Query().Books(context.Background(), intToPtr(2), nil)
+	ok(t, err)
+	equals(t, repoMock.BookListCalls()[0].Limit, intToPtr(2))
+	equals(t, repoMock.BookListCalls()[0].Offset, (*int)(nil))
+}

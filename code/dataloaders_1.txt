@@ -1,0 +1,10 @@
+// dataloaden/dataloaden.go
+
+package dataloaden
+
+//go:generate dataloaden AuthorSliceLoader int64 []*github.com/fwojciec/gqlmeetup.Author
+
+type loaders struct {
+	AuthorsByAgentID *AuthorSliceLoader
+	// (...)
+}

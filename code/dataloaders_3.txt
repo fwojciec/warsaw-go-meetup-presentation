@@ -1,0 +1,22 @@
+// postgres/repository.go
+
+const authorListByAgentIDsQuery = `
+SELECT * FROM authors
+WHERE agent_id = ANY($1::bigint[]);
+`
+
+func (r *Repository) AuthorListByAgentIDs(
+	ctx context.Context,
+	agentIDs []int64,
+) ([]*gqlmeetup.Author, error) {
+	res := make([]*gqlmeetup.Author, 0)
+	if err := r.DB.SelectContext(
+		ctx,
+		&res,
+		authorListByAgentIDsQuery,
+		pq.Array(agentIDs),
+	); err != nil {
+		return nil, err
+	}
+	return res, nil
+}

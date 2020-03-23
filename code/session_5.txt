@@ -1,0 +1,5 @@
+// scs/scs.go
+
+func (s *SessionService) Middleware(next http.Handler) http.Handler {
+	return s.sm.LoadAndSave(next)
+}

@@ -1,0 +1,21 @@
+// schema.graphql
+type Author {
+  id: ID!
+  name: String!
+  agent: Agent!
+}
+
+// schema.sql
+CREATE TABLE IF NOT EXISTS authors (
+    id bigserial PRIMARY KEY,
+    name text NOT NULL,
+    agent_id bigint NOT NULL,
+    FOREIGN KEY (agent_id) REFERENCES agents (id) ON DELETE RESTRICT
+);
+
+// gqlmeetup.go
+type Author struct {
+	ID      int64
+	Name    string
+	AgentID int64
+}

@@ -1,0 +1,16 @@
+├── bcrypt
+├── cmd
+│   ├── createuser
+│   └── server
+├── dataloaden
+├── gqlgen
+├── http
+├── mocks
+├── postgres
+├── scs
+├── errors.go       // root dir files
+├── gqlgen.yml
+├── gqlmeetup.go
+├── schema.graphql
+├── schema.sql
+└── tools.go

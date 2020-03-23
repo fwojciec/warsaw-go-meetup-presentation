@@ -1,0 +1,21 @@
+// dataloaden/dataloaden.go
+
+type contextKey string
+
+const key = contextKey("dataloaders")
+
+func (s *DataLoaderService) Initialize(ctx context.Context) context.Context {
+	return context.WithValue(ctx, key, &loaders{
+		AuthorsByAgentID: newAuthorsByAgentID(ctx, s.Repository),
+		// (...)
+	})
+}
+
+func (s *DataLoaderService) Middleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		nextCtx := s.Initialize(ctx)
+		r = r.WithContext(nextCtx)
+		next.ServeHTTP(w, r)
+	})
+}

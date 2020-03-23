@@ -1,0 +1,5 @@
+// scs/scs.go
+
+func (s *SessionService) Logout(ctx context.Context) error {
+	return s.sm.Destroy(ctx)
+}

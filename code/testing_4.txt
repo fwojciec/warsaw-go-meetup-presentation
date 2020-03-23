@@ -1,0 +1,8 @@
+// gqlgen/resolver.go
+
+type Resolver struct {
+	Repository  gqlmeetup.Repository
+	DataLoaders gqlmeetup.DataLoaderService
+	Password    gqlmeetup.PasswordService
+	Session     gqlmeetup.SessionService
+}

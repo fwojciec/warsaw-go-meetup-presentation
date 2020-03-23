@@ -1,0 +1,525 @@
+# Building GraphQL servers in Go
+(using gqlgen)
+
+Filip Wojciechowski
+23 Mar 2020
+fwojciec@gmail.com
+@filipcodes
+
+## Hi, I'm Filip!
+
+.image images/filipcodes.jpg _ 550
+- Twitter: [@filipcodes](https://twitter.com/filipcodes)
+- Blog: [https://w11i.me](https://w11i.me)
+- Github: [https://github.com/fwojciec](https://github.com/fwojciec)
+
+: I work as a literary agent (a book nerd who helps book nerds who write book to sell their work to book nerds who publish books)
+: But I'm also a computer nerd and have been since I can remember
+: Literary agencies are tech companies too (over 10,000 active licensing contracts managed by a team of 5 agents)
+: I'm also a new dad
+
+## Today's plan
+
+.image images/messenger-reading.png 175 _
+
+- Why build GraphQL servers (with `gqlgen`)?
+- Intro to gqlgen
+- Architecture and project organization
+- Datalayer considerations
+- Authentication
+- Authorization
+- Testing strategies and examples
+
+: most tutorials about GraphQL servers available online focus on the basics
+: the examples you might find are often unrealistic
+: the goal of this talk is to cover issues that come up and you'll likely have to solve as you're working on a real-world application
+
+## Not included
+
+- Subscriptions
+- Advanced GraphQL topics like schema federation, etc.
+- GraphQL at scale
+- much more...
+
+## Why build GraphQL servers (with `gqlgen`)?
+
+## Why GraphQL?
+
+- emerging standard in the JS frontend community (Gatsby, RedwoodJS)
+- empowers frontend developers...
+- and makes them more productive
+- single backend for multiple frontends (web and mobile)
+- strongly typed! 😻
+- REST is not dead
+
+.image images/surfing-js.svg 250 _
+
+: There is too much hype about GraphQL, it's important to consider it realistically in terms of alternatives and tradeoffs.
+: My answer is subjective and based on my experience
+: Decoubles frontend teams from backend teams
+: Makes frontend development fun thanks to powerful tooling enabled by GraphQL's strong typing
+: Replace state-management libraries (Redux, etc.) with things like Apollo
+: No need for context switching to backend concerns when thinking about UI design
+: Evolution of FFB (Frontend For Backend) paradigm?
+: REST still better in some applications
+: Not much experience with gRPC, but it seems a better choice for IoT or server-to-server communication
+
+: WHY NOT?
+: too much hype?
+: more compute intensive less performant than REST for individual queries
+: added complexity
+: still a fairly new technology
+
+## Why gqlgen?
+
+.image images/gqlgen-github.png _ 1000
+
+- popular and actively maintained
+- schema-first approach
+- type safety (no `map[string]interface{}`)
+
+: Disclaimer: I've only really used gqlgen for real-life projects
+: Use schema to model the app, generate then fill in the blanks
+: Schema first vs code first approach (and why I prefer the schema-first approach)
+: Type-safety thanks to code generation
+
+##
+
+- feature-full
+.image images/gqlgen-features.png _ 700
+.caption _Source:_ [[https://gqlgen.com/feature-comparison][https://gqlgen.com/feature-comparison]]
+
+##
+
+- performs well in benchmarks (for what it's worth...)
+
+.image images/gqlgen-benchmarks.png _ 400
+.caption _Source:_ [[https://github.com/appleboy/golang-graphql-benchmark][https://github.com/appleboy/golang-graphql-benchmark]]
+
+
+## Intro to gqlgen
+
+## Schema-first workflow
+
+1. Create `gqlgen.yml` config file
+2. Write a graphql schema
+3. Write domain models that correspond to the schema types
+4. Generate the server by running `gqlgen`
+5. Provide custom implementations of the missing resolvers
+6. On schema change regenerate the server, and
+7. Update the resolvers
+
+[demo]
+
+: > cd ~/Projects/Go/gqlmeetup-start/
+: > code .
+: discuss the config file
+: discuss the gqlmeetup.go file
+: discuss the schema file
+: > gqlgen
+: discuss the gqlgen/exec_gen.go file
+: - all "static" field resolvers were created
+: - all "dynamic" field resolvers need to be provided
+
+
+## Architecture and project organization
+
+## Example app overview
+
+Repository link: [https://github.com/fwojciec/gqlmeetup](https://github.com/fwojciec/gqlmeetup)
+
+Built using:
+- [gqlgen](https://github.com/99designs/gqlgen)
+- [dataloaden](https://github.com/vektah/dataloaden)
+- [sqlx](https://github.com/jmoiron/sqlx)
+- the standard library
+
+: A backend for a literary agency website
+
+## "Standard Package Layout"
+
+.image images/standard-package-layout-rules.png _ 800
+.caption _Source:_ [[https://medium.com/@benbjohnson/standard-package-layout-7cdbc8391fc1]["Standard Package Layout" by Ben Johnson]]
+
+## Directory layout
+.code code/dirtree.txt
+
+: Removed go.mod, go.sum, README.md, etc.
+
+## "Root package is for domain types"
+
+These can be either structs...
+.code code/agent.txt
+
+## ..or interfaces...
+.code code/repo.txt
+
+- you could also define app-wide errors in the root package
+- one important rule: The domain types can't depend on any of the subpackages.
+
+: Also errors, for example
+: The root package shouldn't depend on any other package in the application.
+
+## "Group subpackages by dependency"
+
+The root package defines an interface that describes required functionality:
+
+.code code/password_service.txt
+
+##
+
+A subpackage provides that functionality by implementing the interface:
+
+.code code/bcrypt.txt
+
+: Other packages take the interface as an argument.
+
+## "Use a shared mock package"
+
+Create mock implementations of "service" interfaces to use in tests:
+
+.code code/mocks.txt
+
+`go generate ./mocks/...`
+
+: Mat Ryer / moq package
+: I like moq because you can easily and transparently provide per-test implementations of mocked methods.
+
+## "Main package ties together dependencies"
+
+[demo]
+
+## Summary: The main advantages of this approach
+
+- prevents the circular dependency problem
+- modular design: isolates dependencies, prevents coupling
+- makes mocking and testing easy
+
+.image images/gopher-dance-long-3x.gif
+
+## Datalayer considerations
+
+## Data schema
+
+- four types: agent, author, book, and user
+- agent has many authors (one-to-many)
+- author has many books and book can have many authors (many-to-many)
+- user for authentication/authorization purposes
+
+.image images/data-schema.svg _ 900
+
+: explain how this is defined twice: in GraphQL schema and in the domain types
+
+## GraphQL, SQL and domain types
+
+.code code/types.txt
+
+: you end up defining types multiple times
+: "Map dependencies to your domain language"
+
+## sqlc
+
+- it's possible to streamline the workflow using sqlc
+- very promising, but not a perfect fit yet...
+	- values instead of pointers
+	- sql.Null types instead of pointers
+	- generates its own models
+
+.image images/sqlc-repo.png _ 1000
+
+## GraphQL ID type
+
+- according to the spec ID can be of any type
+- in practice usually string is assumed by tools
+- possible to override the default ID type in gqlgen
+- a good idea?
+
+: example from my experience
+: working around incompatibility with SQL
+: UUIDs?
+: reasons why it's good to avoid overriding the type
+
+## How GraphQL resolves queries
+
+- graph of nodes
+- node: fields and references to other nodes
+- multiple points of entry
+- unlimited depth
+
+## Example
+
+.image images/resolving.svg _ 900
+
+- resolvers are executed concurrently when possible
+- in some cases resolving a field is just looking up a field on a struct
+- in other cases, however, it involves a DB or API call
+- implications for performance
+
+: calling the authors method on the agentResolver involves a DB call
+: since the query returns a list of authors, this DB call will be made for each item on the list
+: the N+1 query problem
+
+## N+1 query problem
+
+- 1 -> The initial query to get the list of agents
+- N -> The individual queries to get a list of authors for each agent
+- with SQL databases each query uses a DB connection
+- luckily there is a solution to this problem: DataLoaders
+
+[demo]
+
+## DataLoaders
+
+- "request-scoped method of caching and batching data-fetching queries"
+- "request-scoped": a DataLoader instance lives only for the duration of a request
+- "caching": each piece of data is fetched only once
+- "batching": data is fetched from the datalayer in batches
+- great introduction and history of the pattern by Lee Byron
+
+.image images/lee-byron-video.png _ 1000
+
+: watch Lee Byron's video about the history of the DataLoader pattern
+
+## DataLoader lifecycle
+
+1) a DataLoader instance is initialized by middleware when a request comes in
+2) it blocks for a set duration of time and waits to receive arguments for its data query
+3) it retrieves the data in one or more batches
+4) it returns results corresponding to the respective arguments back to the resolvers
+5) it is garbage-collected when the processing of the request finishes
+
+## Implementing DataLoaders in Go using dataloaden
+
+.image images/dataloaden-repo.png _ 1000
+
+: another codegen tool to make our life easy
+: written by the main developer of gqlgen
+
+## Step 1: generate a DataLoader type for a given combination on input and output types
+
+.code code/dataloaders_1.txt
+
+- the input type in this case is `int64` values
+- the output value is a slice of `Author` pointers
+- `loaders` is the value we will be storing in the context
+
+## Step 2: create a concrete implementation...
+
+.code code/dataloaders_2.txt
+
+: fixed wait time?
+: batch size
+: input/output types
+: database query using ANY
+: fetch/group/order pattern
+: group in this example is just a lookup map
+: the importance of order
+: considerations for many-to-many queries / grouping (BookListByAuthorIDs as example)
+
+## ... using a ANY() SQL query
+
+.code code/dataloaders_3.txt
+
+: using sqlx here
+: ANY/pq.Array
+
+## Step 3: store the DataLoaders in the request context using HTTP middleware
+
+.code code/dataloaders_4.txt
+
+: using the loaders type here again
+: using the standard HTTP middleware pattern
+
+## Provide a method to retrieve the DataLoader from the context (for use in the resolvers)
+
+.code code/dataloaders_5.txt
+
+: using the loaders struct again
+: GraphQL resolvers hold a reference to an implementation of the gqlmeetup.DataLoaderService interface
+: so they are able to access the AuthorListByAgentID method
+
+## DataLoaders: final thoughts
+
+- they come at a cost so it might be worth it to consider alternative implementations
+- fine-tune performance using the batch/wait variables
+- data-source agnostic, so they could be used to talk to APIs rather than DBs, for example
+
+.image images/hiking.svg 300 _
+
+## Authentication
+
+##
+
+- authentication: determining the identity of the user making the request
+- many ways to approach this:
+	- OAuth2 / Login Form / Both?
+	- Login Form implemnented using HTTP handler/form or as an API call or as a GraphQL mutation?
+	- JWT Tokens?
+	- Cookie-based sessions?
+
+## Example implementation
+
+- a login mutation which saves the session in the HttpOnly cookie
+- caveat - this approach is [incompatible with subscriptions/websockets](https://github.com/alexedwards/scs/issues/82)
+- if you need subscriptions/websockets you'll need to create separate HTTP login/logout endpoints to manage the user session
+
+## Difficulty implementing cookie-based authentication in gqlgen
+
+- no access to the `http.ResponseWriter` and `*http.Request` in the resolvers
+- as such no easy way to set/access cookies
+
+.image images/cookie-issue.png _ 700
+.caption _Source:_ [[https://github.com/99designs/gqlgen/issues/567][https://github.com/99designs/gqlgen/issues/567]]
+
+## Step 1: Define SessionService interface
+
+.code code/session_1.txt
+
+## Step 2: Implement the functionality using the scs library...
+
+.image images/scs-repo.png _ 1000
+
+- unlike gorilla sessions, for example, sets/reads cookies using context only
+
+## .. Login method ...
+
+.code code/session_2.txt
+
+## .. Logout method ...
+
+.code code/session_3.txt
+
+## .. GetUser method ...
+
+.code code/session_4.txt
+
+## .. and provide a HTTP Middleware to wrap the GraphQL handler
+
+.code code/session_5.txt
+
+## Authenitcation: Final thoughts
+
+- the best solution depends on the requirements
+- sessions based authentication works well for web clients
+- if you end choosing JWT tokens: make sure they're not stored in local storage on the client
+- use some established OpenID Connect Service like (Auth0, AWS Cognito, Azure AD, etc.)
+
+.image images/knight.svg 300 _
+
+## Authorization
+
+##
+
+- authorization: should this user be able to do this
+- a very complex topic, for a deeper dive see:
+
+.image images/gql-authorization-video.png _ 1000
+
+## Where to put authorization?
+
+.image images/where-authorization.svg _ 800
+.caption _Source:_ [[https://www.youtube.com/watch?v=pF6SH7Tm6Pc][Christoph Hartmann]]
+
+1) HTTP server / implemented using HTTP middleware
+2) GraphQL server / implemented using directives
+3) Resolvers / custom logic in the resolvers
+4) Authorization deferred to some outside logic called by the resolvers
+
+## GraphQL directives
+
+Field-level authorization implemented using the GraphQL schema:
+
+.code code/directives_1.txt
+
+## Implementation of the hasRole directive
+
+.code code/directives_2.txt
+
+## Resolver-level authorization
+
+- use the SessionService to retrieve the user
+- grant/restrict access based on who the user is
+- run different queries based on who the user is
+- etc.
+
+## Authorization: Final thoughts
+
+- Schema directives make common use-cases easy to implement
+- authorization code should be fast (similar considerations as in the case of DataLoaders)
+- consider authorization when designing the schema
+- fine-grained authorization for large GraphQL APIs is a difficult engineering challenge
+
+.image images/umbrella.svg 300 _
+
+## Testing strategies and examples
+
+##
+
+"Standard Package Layout" makes testing manageable
+- all dependencies are isolated in separate subpackages
+- their functionality is defined by interfaces
+- which makes it easy to use mocks
+
+: integration vs unit test
+: what is a unit test in Go anyways?
+
+## t.Parallel() everything
+
+.image images/pb-testing-tweet.png _ 600
+
+Use this approach, for example, to run DB tests in parallel: [https://conroy.org/per-test-database-isolation-in-postgres](https://conroy.org/per-test-database-isolation-in-postgres)
+
+## ok, equals, assert
+
+.image images/testing-repo.png _ 1000
+
+[https://github.com/benbjohnson/testing](https://github.com/benbjohnson/testing)
+
+## DB Testing: don't mock the database
+
+.code code/testing_1.txt
+
+`pgt`: [https://github.com/fwojciec/pgtester](https://github.com/fwojciec/pgtester)
+
+## DB Testing: table-driven tests
+
+.code code/testing_2.txt
+
+## DB Testing: create/update/delete
+
+.code code/testing_3.txt
+
+## Subpackages
+
+- test the individual subpackages
+- use mocks elsewhere, where these subpackages are used
+- the DB tests discussed previously follow this pattern
+- use something like [moq](https://github.com/matryer/moq) to automatically generate mocks from interfaces
+
+## Resolver testing
+
+This is how the resolver is defined:
+
+.code code/testing_4.txt
+
+Testing individual resolver methods typically involves:
+
+1) using mock implementations of the services used by a particular method
+2) asserting that these services were called correctly
+
+## Resolver testing: Example 1
+
+.code code/testing_5.txt
+
+## Resolver testing: Example 2
+
+.code code/testing_6.txt
+
+## DataLoader testing
+
+- to test dataloaders you should test how they behave under conditions of concurrency
+- use the t.Parallel() to simulate concurrent processing of a request
+
+## DataLoader testing: Example
+
+.image images/dl-testing.png _ 780

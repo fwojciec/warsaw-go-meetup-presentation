@@ -1,0 +1,17 @@
+func TestAgentCreate(t *testing.T) {
+	t.Parallel()
+	pgt.Runner(t, []string{"agents"}, func(t *testing.T, sdb *sqlx.DB) {
+		ctx := context.Background()
+		repo := &postgres.Repository{DB: sdb}
+		t.Run("create", func(t *testing.T) {
+			res, err := repo.AgentCreate(ctx, testAgentCreate)
+			ok(t, err)
+			equals(t, &testAgentCreate, res)
+			t.Run("assert agent was created", func(t *testing.T) {
+				t.Parallel()
+				res, _ := repo.AgentGetByID(ctx, testAgentCreate.ID)
+				equals(t, &testAgentCreate, res)
+			})
+		})
+	})
+}

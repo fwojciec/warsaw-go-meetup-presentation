@@ -1,0 +1,19 @@
+// postgres/postgres_test.go
+
+testAgent1 = gqlmeetup.Agent{
+	ID:    1,
+	Name:  "Test Agent 1",
+	Email: "agent1@test.com",
+}
+
+// postgres/repository_test.go
+
+func TestAgentGetByID(t *testing.T) {
+	t.Parallel()
+	pgt.Runner(t, []string{"agents"}, func(t *testing.T, sdb *sqlx.DB) {
+		repo := &postgres.Repository{DB: sdb}
+		res, err := repo.AgentGetByID(context.Background(), 1)
+		ok(t, err)
+		equals(t, &testAgent1, res)
+	})
+}

@@ -1,0 +1,18 @@
+// bcrypt/bcrypt.go
+
+type BcryptService struct{}
+
+func (s *BcryptService) Check(pwdHash, pwd string) error {
+	if err := bcrypt.CompareHashAndPassword([]byte(pwdHash), []byte(pwd)); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *BcryptService) Hash(pwd string) (string, error) {
+	hash, err := bcrypt.GenerateFromPassword([]byte(pwd), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+	return string(hash), nil
+}

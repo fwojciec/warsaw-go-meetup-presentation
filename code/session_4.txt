@@ -1,0 +1,14 @@
+// scs/scs.go
+
+func (s *SessionService) GetUser(ctx context.Context) *gqlmeetup.User {
+	b := s.sm.GetBytes(ctx, "user")
+	if b == nil {
+		return nil
+	}
+	// unmarshal from JSON
+	user, err := s.unmarshalUser(b)
+	if err != nil {
+		return nil
+	}
+	return user
+}

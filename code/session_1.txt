@@ -1,0 +1,8 @@
+// gqlmeetup.go
+
+type SessionService interface {
+	Login(ctx context.Context, user *User) error
+	Logout(ctx context.Context) error
+	GetUser(ctx context.Context) *User
+	Middleware(http.Handler) http.Handler
+}

@@ -1,0 +1,19 @@
+// gqlgen/resolvers_test.go
+
+func TestMutationResolverAuthorCreate(t *testing.T) {
+	t.Parallel()
+	repoMock := &mocks.RepositoryMock{
+		AuthorCreateFunc: func(c context.Context, a gqlmeetup.Author) (*gqlmeetup.Author, error) {
+			return nil, nil
+		},
+	}
+	r := &gqlgen.Resolver{Repository: repoMock}
+	_, _ = r.Mutation().AuthorCreate(context.Background(), gqlgen.AuthorInput{
+		Name:    "Test Name",
+		AgentID: "12",
+	})
+	equals(t, repoMock.AuthorCreateCalls()[0].Data, gqlmeetup.Author{
+		Name:    "Test Name",
+		AgentID: 12,
+	})
+}

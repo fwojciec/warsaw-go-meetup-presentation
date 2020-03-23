@@ -1,0 +1,20 @@
+// dataloaden/dataloaden.go
+
+func (s *DataLoaderService) AuthorListByAgentID(
+	ctx context.Context,
+	agentID int64,
+) ([]*gqlmeetup.Author, error) {
+	l, err := s.retrieve(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return l.AuthorsByAgentID.Load(agentID)
+}
+
+func (s *DataLoaderService) retrieve(ctx context.Context) (*loaders, error) {
+	l, ok := ctx.Value(key).(*loaders)
+	if !ok {
+		return nil, gqlmeetup.ErrInvalid
+	}
+	return l, nil
+}

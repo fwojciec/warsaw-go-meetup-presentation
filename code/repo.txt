@@ -1,0 +1,13 @@
+// gqlmeetup.go
+
+type Repository interface {
+	// Agent
+	AgentCreate(ctx context.Context, data Agent) (*Agent, error)
+	AgentDelete(ctx context.Context, id int64) (*Agent, error)
+	AgentGetByID(ctx context.Context, id int64) (*Agent, error)
+	AgentList(ctx context.Context) ([]*Agent, error)
+	AgentListByIDs(ctx context.Context, ids []int64) ([]*Agent, error)
+	AgentUpdate(ctx context.Context, id int64, data Agent) (*Agent, error)
+
+	// ...
+}

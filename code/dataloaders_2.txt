@@ -1,0 +1,23 @@
+// dataloaden/dataloaden.go
+
+func newAuthorsByAgentID(ctx context.Context, repo gqlmeetup.Repository) *AuthorSliceLoader {
+	return NewAuthorSliceLoader(AuthorSliceLoaderConfig{
+		MaxBatch: 100,
+		Wait:     5 * time.Millisecond,
+		Fetch: func(agentIDs []int64) ([][]*gqlmeetup.Author, []error) {
+			res, err := repo.AuthorListByAgentIDs(ctx, agentIDs)
+			if err != nil {
+				return nil, []error{err}
+			}
+			groupByAgentID := make(map[int64][]*gqlmeetup.Author, len(agentIDs))
+			for _, r := range res {
+				groupByAgentID[r.AgentID] = append(groupByAgentID[r.AgentID], r)
+			}
+			result := make([][]*gqlmeetup.Author, len(agentIDs))
+			for i, agentID := range agentIDs {
+				result[i] = groupByAgentID[agentID]
+			}
+			return result, nil
+		},
+	})
+}

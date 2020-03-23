@@ -1,0 +1,19 @@
+// schema.graphql
+
+directive @hasRole(role: Role!) on FIELD_DEFINITION
+
+enum Role {
+  ADMIN
+  USER
+}
+
+type Query {
+  me: User! @hasRole(role: USER)
+  // (...)
+}
+
+type Mutation {
+  agentCreate(data: AgentInput!): Agent! @hasRole(role: ADMIN)
+  authorCreate(data: AuthorInput!): Author! @hasRole(role: USER)
+  // (...)
+}
