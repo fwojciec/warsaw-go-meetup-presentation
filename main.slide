@@ -34,12 +34,12 @@ fwojciec@gmail.com
 : the examples you might find are often unrealistic
 : the goal of this talk is to cover issues that come up and you'll likely have to solve as you're working on a real-world application
 
-## Not included
+: Not included
 
-- Subscriptions
-- Advanced GraphQL topics like schema federation, etc.
-- GraphQL at scale
-- much more...
+: Subscriptions
+: Advanced GraphQL topics like schema federation, etc.
+: GraphQL at scale
+: much more...
 
 ## Why build GraphQL servers (with `gqlgen`)?
 
@@ -106,8 +106,7 @@ fwojciec@gmail.com
 3. Write domain models that correspond to the schema types
 4. Generate the server by running `gqlgen`
 5. Provide custom implementations of the missing resolvers
-6. On schema change regenerate the server, and
-7. Update the resolvers
+6. On schema change: regenerate the server and update the resolvers
 
 [demo]
 
@@ -146,50 +145,7 @@ Built using:
 
 : Removed go.mod, go.sum, README.md, etc.
 
-## "Root package is for domain types"
-
-These can be either structs...
-.code code/agent.txt
-
-## ..or interfaces...
-.code code/repo.txt
-
-- you could also define app-wide errors in the root package
-- one important rule: The domain types can't depend on any of the subpackages.
-
-: Also errors, for example
-: The root package shouldn't depend on any other package in the application.
-
-## "Group subpackages by dependency"
-
-The root package defines an interface that describes required functionality:
-
-.code code/password_service.txt
-
-##
-
-A subpackage provides that functionality by implementing the interface:
-
-.code code/bcrypt.txt
-
-: Other packages take the interface as an argument.
-
-## "Use a shared mock package"
-
-Create mock implementations of "service" interfaces to use in tests:
-
-.code code/mocks.txt
-
-`go generate ./mocks/...`
-
-: Mat Ryer / moq package
-: I like moq because you can easily and transparently provide per-test implementations of mocked methods.
-
-## "Main package ties together dependencies"
-
-[demo]
-
-## Summary: The main advantages of this approach
+## Architecture and project organization: Final thoughts
 
 - prevents the circular dependency problem
 - modular design: isolates dependencies, prevents coupling
@@ -338,7 +294,7 @@ Create mock implementations of "service" interfaces to use in tests:
 : GraphQL resolvers hold a reference to an implementation of the gqlmeetup.DataLoaderService interface
 : so they are able to access the AuthorListByAgentID method
 
-## DataLoaders: final thoughts
+## DataLoaders: Final thoughts
 
 - they come at a cost so it might be worth it to consider alternative implementations
 - fine-tune performance using the batch/wait variables
@@ -353,7 +309,7 @@ Create mock implementations of "service" interfaces to use in tests:
 - authentication: determining the identity of the user making the request
 - many ways to approach this:
 	- OAuth2 / Login Form / Both?
-	- Login Form implemnented using HTTP handler/form or as an API call or as a GraphQL mutation?
+	- Login Form implemnented using HTTP handler or as a GraphQL mutation?
 	- JWT Tokens?
 	- Cookie-based sessions?
 
@@ -361,9 +317,11 @@ Create mock implementations of "service" interfaces to use in tests:
 
 - a login mutation which saves the session in the HttpOnly cookie
 - caveat - this approach is [incompatible with subscriptions/websockets](https://github.com/alexedwards/scs/issues/82)
-- if you need subscriptions/websockets you'll need to create separate HTTP login/logout endpoints to manage the user session
 
-## Difficulty implementing cookie-based authentication in gqlgen
+: if you need subscriptions/websockets you'll need to create separate HTTP login/logout endpoints to manage the user session
+: preferably using Oauth2-based service
+
+## It's tricky to implement cookie-based authentication in gqlgen
 
 - no access to the `http.ResponseWriter` and `*http.Request` in the resolvers
 - as such no easy way to set/access cookies
@@ -379,7 +337,7 @@ Create mock implementations of "service" interfaces to use in tests:
 
 .image images/scs-repo.png _ 1000
 
-- unlike gorilla sessions, for example, sets/reads cookies using context only
+: unlike gorilla sessions, for example, sets/reads cookies using context only
 
 ## .. Login method ...
 
@@ -399,10 +357,8 @@ Create mock implementations of "service" interfaces to use in tests:
 
 ## Authenitcation: Final thoughts
 
-- the best solution depends on the requirements
-- sessions based authentication works well for web clients
-- if you end choosing JWT tokens: make sure they're not stored in local storage on the client
-- use some established OpenID Connect Service like (Auth0, AWS Cognito, Azure AD, etc.)
+- if you end choosing JWT tokens: don't store them in local storage
+- use an established OpenID Connect Service like (Auth0, AWS Cognito, etc.)
 
 .image images/knight.svg 300 _
 
@@ -425,7 +381,7 @@ Create mock implementations of "service" interfaces to use in tests:
 3) Resolvers / custom logic in the resolvers
 4) Authorization deferred to some outside logic called by the resolvers
 
-## GraphQL directives
+## Schema directives
 
 Field-level authorization implemented using the GraphQL schema:
 
@@ -444,7 +400,6 @@ Field-level authorization implemented using the GraphQL schema:
 
 ## Authorization: Final thoughts
 
-- Schema directives make common use-cases easy to implement
 - authorization code should be fast (similar considerations as in the case of DataLoaders)
 - consider authorization when designing the schema
 - fine-grained authorization for large GraphQL APIs is a difficult engineering challenge
